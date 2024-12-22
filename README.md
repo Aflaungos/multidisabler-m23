@@ -12,7 +12,7 @@ Instructions:
 - Boot into recovery WITHOUT first rebooting to system, otherwise the stock firmware will remove TWRP and restore stock Recovery.
   To do it, reboot the phone with a connected USB cable and volume up and power keys pressed right after Download Mode.
 - IF TWRP doesn't mount your /data (if you don't see your files from the internal flash) - wipe data partition: Wipe > Format Data
-- Then EITHER take [multidisabler-a73-v5.zip](multidisabler-a73-v5.zip) (it just contains the [multidisabler](multidisabler) script as `META-INF/com/google/android/update-binary`), copy it to TWRP and install it
+- Then install this zip in TWRP
 - OR copy [multidisabler](multidisabler) to TWRP and just run it in the console. You can use TWRP's terminal or even adb shell to TWRP from your PC:
   ```
   adb push multidisabler /tmp/
