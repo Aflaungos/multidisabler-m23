@@ -3,6 +3,7 @@
 # A simple Samsung services disabler by Ian Macdonald.
 # Enhanced by afaneh92 for Galaxy S22 - https://github.com/mohammad92/android_device_samsung_g0s
 # Then enhanced by vitalif for Galaxy A73 - https://yourcmc.ru/git/vitalif/multidisabler-a73 :-)
+# Then adapted by Mrsiri for Galaxy M23 :-D
 # With F2FS and "SUPER" partition support.
 #
 # Use this _JUST_ after installing TWRP to prime your device!
@@ -15,6 +16,171 @@
 # - Disables stock recovery restoration
 # - Disables Vaultkeeper, proca and other bits from standard multidisabler:
 #   TLC HDM/ICCC/KG, CASS, WSM, FRP
+#
+
+arg1="$1"
+arg2="$2"
+arg3="$3"
+VER=3.7.3.0s
+RSTATUS="TestBeta-v"
+
+n="
+"
+case $0 in
+*data*user*flash*update-binary*)
+
+    write_moduele_prop() {
+        echo "id=RO2RWMAGISK"
+        echo "name=RO2RW"
+        echo "version=$VER"
+        echo "versionCode=$(echo $VER | sed 's|\.||g')"
+        echo "author=LeeGarChat"
+        echo "description=Group TG @PocoF3DFE. For start script, go to terminal and write RO2RW"
+    }
+    write_ro2rw_bin() {
+        echo '#!/system/bin/sh'
+        echo 'chmod 777  /data/adb/modules/RO2RW/install.sh'
+        echo '[ -f  /data/adb/modules/RO2RW/install.sh ] && {'
+        echo '/data/adb/modules/RO2RW/install.sh "terminal" 2 "/data/adb/modules/RO2RW/install.zip" "magisk"'
+        echo 'exit $?'
+        echo '}'
+    }
+    echo -e "\n"
+    echo -e " - Unpacking tools: RO2RW for Magisk $RSTATUS$VER"
+    sleep 1
+
+    rm -rf /data/adb/modules/RO2RW
+    mkdir -p \
+        /data/adb/modules/RO2RW/system/bin \
+        /data/adb/modules/RO2RW/RO2RW.files
+
+    cp $3 /data/adb/modules/RO2RW/install.zip
+    cp $0 /data/adb/modules/RO2RW/install.sh
+
+    /data/adb/magisk/busybox unzip -o "$arg3" "*" -d "/data/adb/modules/RO2RW/RO2RW.files" &>/dev/null
+
+    write_moduele_prop >>/data/adb/modules/RO2RW/module.prop
+    write_ro2rw_bin >>/data/adb/modules/RO2RW/system/bin/RO2RW
+
+    cp /data/adb/modules/RO2RW/system/bin/RO2RW /data/adb/modules/RO2RW/system/bin/ro2rw
+    chmod 777 /data/adb/modules/RO2RW/RO2RW.files/*
+    chmod 777 /data/adb/modules/RO2RW/system/bin/*
+    echo -e "\n"
+    if [ -f /system/bin/RO2RW ] && (grep -q "magisk" /system/bin/RO2RW); then
+        echo -e " - Complete updating RO2RW"
+        echo -e " - You can use script. \n - Open any terminal, give su \n   permission, and write RO2RW or ro2rw"
+    else
+        echo -e " - Complite, please reboot you device"
+        echo -e " - After reboot, you can use script. \n - Open any terminal, give su \n   permission, and write RO2RW or ro2rw"
+    fi
+    sleep 1
+    echo -e "\n"
+    echo -e " - TG group: @MFPupdate\n - TG chat: @PocoF3DFE\n - Author: @LeeGarChat"
+
+    exit 0
+    ;;
+esac
+
+read_main_dir(){
+
+full_path="$1"
+while true ; do 
+    full_path="$(dirname "$full_path")"
+    low_dir="${full_path%\/*}"
+    [ -z "$low_dir" ] && break
+done
+echo "$full_path"
+
+}
+
+(mountpoint -q /data) || { 
+    mount /data || {
+    umount /data
+    }
+}
+(mountpoint -q /data) && {
+    TMP_NEO=/data/local/TMP_NEO
+    TMP_IMGS=/data/local/TMP_NEO/imgs
+    NEO_LOGS=/data/media/0/NEO.LOGS
+    check_size_main_path=/data
+} || {
+    TMP_NEO=/dev/TMP_NEO
+    TMP_IMGS="$(read_main_dir "$arg3")/NEO.IMGS/imgs"
+    NEO_LOGS="$(read_main_dir "$arg3")/NEO.LOGS"
+    check_size_main_path=$(read_main_dir "$arg3")
+    #my_print "Need mount data, OTG and encrypted data not supported"
+    #exit 123
+}
+
+
+if [ -d $TMP_IMGS ]; then
+    for file in $TMP_IMGS/*; do
+        [ -d $file ] && {
+            while (mountpoint -q $file); do
+                umount -fl $file >>/dev/null
+            done
+        }
+    done
+fi
+magisk_on_system=false
+case $4 in
+    magisk) magisk_on_system=true ;;
+    *) magisk_on_system=false ;;
+esac
+
+rm -rf $TMP_NEO
+
+mkdir -pv $TMP_NEO/ &>>/dev/null
+mkdir -pv $TMP_IMGS/ &>>/dev/null
+LOG=$TMP_NEO/log.file.txt
+
+getprop &>>$LOG
+
+ls /dev/block/by-name/* /dev/block/* /dev/block/mapper/* &>>$LOG
+
+cd "$TMP_NEO"
+$magisk_on_system && {
+    cp -R /data/adb/modules/RO2RW/RO2RW.files/* $TMP_NEO/
+} || {
+    unzip -o "$arg3" -d "$TMP_NEO" &>>$LOG || \
+    unzip -o "$arg3" &>>$LOG
+}
+cp $TMP_NEO/arm64/bootctl $TMP_NEO/arm32/
+cp $TMP_NEO/arm64/erofs $TMP_NEO/arm32/
+
+chmod -R 777 $TMP_NEO &>>$LOG
+chmod 777 $TMP_NEO/arm32/* &>>$LOG
+chmod 777 $TMP_NEO/arm32/lib/* &>>$LOG
+chmod 777 $TMP_NEO/arm64/* &>>$LOG
+chmod 777 $TMP_NEO/arm64/lib/* &>>$LOG
+
+case "$(file /system/bin/sh)" in
+    *"symbolic link"*)
+        case "$(file $(readlink /system/bin/sh))" in
+        *"32-bit "*" arm"*) arch=arm32
+        ;;
+        *"64-bit "*" arm64"*) arch=arm64
+        ;;
+        esac
+        
+    ;;
+    *"32-bit "*" arm"*) arch=arm32
+    ;;
+    *"64-bit "*" arm64"*) arch=arm64
+    ;;
+esac
+
+
+sed -i 's|VER="EXAMPLE"|VER="'$VER'"|' $TMP_NEO/install.sh
+sed -i 's|RSTATUS="EXAMPLE"|RSTATUS="'$RSTATUS'"|' $TMP_NEO/install.sh
+sed -i 's|#EXAMPLE_SH|#!'$TMP_NEO/$arch'/bash|' $TMP_NEO/install.sh
+sed -i 's|arch="EXAMPLE"|arch='$arch'|' $TMP_NEO/install.sh
+
+$TMP_NEO/$arch/bash $TMP_NEO/install.sh "$1" "$2" "$3" "$4" "$5"
+exit $?
+
+#
+# End of RO2RW code
 #
 
 set -e
@@ -40,9 +206,9 @@ rm_from_manifest() {
   local md5
   local i
 
-  # Package path is different on Android 10. Check and adapt.
+  # Remove security HALs from manifests
   #
-  [ $major -gt 9 ] && local path_extra='\.hardware'
+  local path_extra='\.hardware'
 
   for i in /vendor/etc/vintf/manifest.xml \
     $ANDROID_ROOT/system/etc/vintf/compatibility_matrix.device.xml \
@@ -167,9 +333,6 @@ disable_fde() {
   local i
   fstab_files=`grep -lr 'forceencrypt' vendor/etc || true`
 
-  #
-  # Exynos devices = fstab.exynos*.
-  # MediaTek devices = fstab.mt*.
   # Snapdragon devices = fstab.qcom, fstab.emmc, fstab.default
   #
   for i in $fstab_files; do
@@ -223,23 +386,15 @@ disable_vaultkeeper() {
 
   echo " - Disabling vaultkeeper..."
 
-  if [ $major -gt 9 ]; then
-    # This is Android 10/11/12/13: Vaultkeeper has its own init files.
-    #
-    for i in $ANDROID_ROOT/system/etc/init/vk*.rc /vendor/etc/init/vk*.rc /vendor/etc/init/vaultkeeper*; do
+  # Vaultkeeper has its own init files.
+  for i in $ANDROID_ROOT/system/etc/init/vk*.rc /vendor/etc/init/vk*.rc /vendor/etc/init/vaultkeeper*; do
       if [ -f $i ]; then
         echo " -   Found $i."
         md5=$( md5 $i )
         sed -i -e 's/^[^#].*$/# &/' $i
         # file_changed $i $md5
       fi
-    done
-  else
-    # This is Android 9: Vaultkeeper is started from init.rc.
-    #
-    sed -i -e 's/^[^#].*vaultkeeper.*$/# &/' \
-        -re '/\/system\/bin\/vaultkeeperd/,/^#?$/s/^[^#]*$/#&/' $ANDROID_ROOT/init.rc
-  fi
+  done
 
   # Qualcomm devices such as the T860 and T865 need this, otherwise the log
   # will be spammed with messages about failed connections to the Vaultkeeper
@@ -345,25 +500,10 @@ disable_frp() {
   sed -i 's/ro\.frp\.pst\=.*/ro\.frp\.pst\=/g' /vendor/build.prop
 }
 
-echo " "
-echo "Multi-disabler for Samsung devices"
-echo "running Android 9 or later."
-echo "by Ian Macdonald, enhanced by afaneh92"
-echo "patched for Galaxy A73 by vitalif"
-echo " "
-
 os=$(getprop ro.build.version.release)
 major=${os%%.*}
 bl=$(getprop ro.boot.bootloader)
 dp=$(getprop ro.boot.dynamic_partitions)
-
-# Firmware version starts at either 8th or 9th character, depending on length
-# of bootloader string (12 or 13).
-#
-fw=${bl:$((${#bl} - 4)):4}
-
-# Device is first 5 characters of bootloader string.
-#
 device=${bl:0:$((${#bl} - 8))}
 mft=$(getprop ro.product.manufacturer | tr '[A-Z]' '[a-z]')
 
@@ -373,18 +513,13 @@ if [ "$mft" != samsung ]; then
 elif [ -z "$device" ]; then
   echo " - Could not determine device model."
   fatal=true
-elif [ $major -lt 9 ]; then
-  echo " - This software is incompatible with Android $major."
-  fatal=true
-fi
 if [ -n "$fatal" ]; then
   echo " - Installation aborted."
   echo " "
   exit 1
 fi
 
-echo " - Detected a $device device with a $fw bootloader."
-echo " - The environment appears to be Android $major."
+echo " - Detected a $device device."
 echo " "
 
 echo " - Mounting /data..."
@@ -437,12 +572,8 @@ disable_vaultkeeper
 disable_proca
 disable_tlc
 disable_frp
-# No "fix_smart_view", I don't know what it is and it breaks boot on A73 %)
-
-if [ $major -gt 9 ]; then
-  disable_wsm
-  disable_cass
-fi
+disable_wsm
+disable_cass
 
 echo " - Unmounting /product..."
 umount /product
