@@ -1,4 +1,4 @@
-## Multidisabler for Samsung Galaxy M23
+## Multidisabler for Samsung Galaxy M23/F23
 
 Enables write access to / (system partition), /product and /vendor, converts / (system) file system to ext4
 (otherwise you may hit a bootloop after modifying / because f2fs refuses to mount r/o with dirty journal),
